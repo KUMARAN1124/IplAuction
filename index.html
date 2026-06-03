@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>E-IPL Auction</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Orbitron:wght@700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+</head>
+<body>
+
+  <canvas id="particles-canvas"></canvas>
+
+  <!-- ======================================================
+       PAGE 1 — TEAM SETUP
+  ======================================================= -->
+  <div id="page-setup" class="page active">
+
+    <header class="site-header">
+      <div class="logo-wrap">
+        <span class="logo-icon">🏏</span>
+        <div>
+          <h1 class="logo-title">E-IPL AUCTION</h1>
+          <p class="logo-sub">Friends Edition</p>
+        </div>
+      </div>
+    </header>
+
+    <main class="setup-container">
+
+      <div class="section-header">
+        <h2>⚡ TEAM SETUP</h2>
+        <p>Register all team owners before the auction begins</p>
+      </div>
+
+      <!-- Add form -->
+      <div class="card form-card">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="inp-name">Owner Name</label>
+            <input type="text" id="inp-name" placeholder="e.g. Rahul" autocomplete="off"/>
+          </div>
+          <div class="form-group">
+            <label for="inp-team">Team Name</label>
+            <input type="text" id="inp-team" placeholder="e.g. Mumbai Titans" autocomplete="off"/>
+          </div>
+          <div class="form-group">
+            <label for="inp-purse">Total Purse (₹ Cr)</label>
+            <input type="number" id="inp-purse" placeholder="e.g. 100" min="1"/>
+          </div>
+          <div class="form-group">
+            <label for="inp-slots">Players to Buy</label>
+            <input type="number" id="inp-slots" placeholder="e.g. 11" min="1"/>
+          </div>
+        </div>
+        <button class="btn-primary" onclick="addOwner()">＋ &nbsp;Add Team</button>
+      </div>
+
+      <!-- Teams list -->
+      <div id="owners-grid" class="owners-grid"></div>
+
+      <!-- Footer -->
+      <div class="setup-footer">
+        <p id="setup-msg" class="setup-msg"></p>
+        <button class="btn-start" id="btn-next" onclick="goToAuction()" disabled>
+          🏏 &nbsp;Proceed to Auction &nbsp;→
+        </button>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ======================================================
+       PAGE 2 — LIVE AUCTION
+  ======================================================= -->
+  <div id="page-auction" class="page">
+
+    <header class="site-header">
+      <div class="logo-wrap">
+        <span class="logo-icon">🏏</span>
+        <div>
+          <h1 class="logo-title">E-IPL AUCTION</h1>
+          <p class="logo-sub">Live Auction</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn-back" onclick="goBack()">← Setup</button>
+        <button class="btn-end-auction" onclick="endAuction()">🏁 &nbsp;End Auction</button>
+      </div>
+    </header>
+
+    <div class="auction-layout">
+
+      <!-- ── LEFT: Controls + Player Card ── -->
+      <div class="auction-main">
+
+        <!-- Upload + Set -->
+        <div class="card control-card">
+          <div class="control-row">
+            <div class="form-group">
+              <label>Upload Player File &nbsp;<small>(Excel / CSV)</small></label>
+              <label class="file-upload-label" for="file-upload">
+                <span id="file-label-text">📂 &nbsp;Choose File</span>
+                <input type="file" id="file-upload" accept=".xlsx,.xls,.csv" onchange="handleFileUpload(event)"/>
+              </label>
+            </div>
+            <div class="form-group set-number-group">
+              <label for="inp-set">Set Number</label>
+              <input type="number" id="inp-set" placeholder="1" min="1"/>
+            </div>
+            <button class="btn-primary" onclick="startSet()">🎯 &nbsp;Start Set</button>
+          </div>
+          <div id="file-status" class="file-status"></div>
+        </div>
+
+        <!-- Player Card Area -->
+        <div id="player-card-wrap" class="player-card-wrap hidden">
+
+          <div class="player-card" id="player-card">
+            <div class="card-shine"></div>
+
+            <div class="card-header-row">
+              <span class="badge badge-set" id="card-set-badge">SET 1</span>
+              <span class="badge badge-overseas hidden" id="card-overseas-badge">🌍 OVERSEAS</span>
+            </div>
+
+            <div class="avatar-wrap">
+              <div class="avatar-ring"></div>
+              <div class="card-avatar">
+                <span id="card-initials">?</span>
+              </div>
+            </div>
+
+            <h2 class="card-player-name" id="card-name">—</h2>
+
+            <div class="card-stats-row">
+              <div class="stat-chip">
+                <span class="stat-chip-label">BASE PRICE</span>
+                <span class="stat-chip-val" id="card-price">₹—</span>
+              </div>
+              <div class="stat-chip">
+                <span class="stat-chip-label">CATEGORY</span>
+                <span class="stat-chip-val" id="card-type">Local</span>
+              </div>
+            </div>
+
+            <div class="bid-area">
+              <div class="form-group">
+                <label for="inp-bid">💰 &nbsp;Final Bid (₹ Cr)</label>
+                <input type="number" id="inp-bid" placeholder="Enter winning bid" min="0" step="0.5"/>
+              </div>
+              <p class="sell-to-label">— Sell to —</p>
+              <div id="team-buttons" class="team-buttons"></div>
+            </div>
+          </div>
+
+          <!-- Navigation -->
+          <div class="card-nav-row">
+            <button class="btn-unsold" onclick="markUnsold()">✗ &nbsp;Unsold</button>
+            <button class="btn-next-player" onclick="nextPlayer()">Next Player &nbsp;➜</button>
+          </div>
+
+          <!-- Set complete message -->
+          <div id="set-empty-msg" class="set-empty hidden">
+            <div class="set-empty-icon">🏆</div>
+            <h3>Set Complete!</h3>
+            <p>All players in this set have been auctioned.<br>Enter a new set number above to continue.</p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── RIGHT: Scoreboard ── -->
+      <aside class="scoreboard">
+        <h3 class="scoreboard-title">📊 AUCTION TRACKER</h3>
+        <div id="scoreboard-list" class="scoreboard-list"></div>
+
+        <div class="unsold-panel">
+          <h4>❌ Unsold</h4>
+          <div id="unsold-list" class="unsold-list">
+            <span class="empty-note">None yet</span>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+
+  <!-- ── SOLD TOAST ── -->
+  <div id="sold-toast" class="sold-toast hidden">
+    <div class="toast-inner">
+      <span class="toast-hammer">🔨</span>
+      <span class="toast-sold-word">SOLD!</span>
+      <span id="toast-detail" class="toast-detail-text"></span>
+    </div>
+  </div>
+
+  <!-- jsPDF for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- SheetJS for Excel/CSV parsing -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
