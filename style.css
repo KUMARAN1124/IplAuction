@@ -667,18 +667,6 @@ body {
 .score-players-list::-webkit-scrollbar { width: 4px; }
 .score-players-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-.bought-player-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  padding: 4px 8px;
-  background: rgba(255,255,255,0.03);
-  border-radius: 5px;
-  color: var(--text-dim);
-}
-.bought-player-row .bp-name { color: var(--text); }
-.bought-player-row .bp-price { color: var(--gold); font-weight: 600; }
-
 .btn-toggle-players {
   font-size: 0.7rem;
   background: none;
@@ -791,3 +779,102 @@ body {
   transition: var(--trans);
 }
 .btn-back:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ── Setup form — 2-col grid ── */
+.form-grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+  margin-bottom: 10px;
+}
+
+.fixed-rules-note {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  margin-bottom: 18px;
+  padding: 8px 12px;
+  background: rgba(245,197,24,0.05);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.fixed-rules-note strong { color: var(--gold); }
+
+/* ── Rules Panel ── */
+.rules-panel {
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--gold);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 28px;
+}
+.rules-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  color: var(--gold);
+  margin-bottom: 14px;
+}
+.rules-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rules-list li {
+  font-size: 0.875rem;
+  color: var(--text-dim);
+  padding-left: 4px;
+}
+.rules-list li strong { color: var(--text); }
+
+/* ── Squad row edit/delete actions ── */
+.bought-player-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 5px;
+  color: var(--text-dim);
+}
+.bought-player-row .bp-name { color: var(--text); flex: 1; }
+
+.bp-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bp-price { color: var(--gold); font-weight: 600; }
+
+.bp-btn {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.1);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  transition: var(--trans);
+  line-height: 1.4;
+  font-weight: 700;
+}
+.bp-delete { color: var(--red); }
+.bp-delete:hover { background: rgba(230,57,70,0.12); border-color: var(--red); }
+
+.bp-price-input {
+  width: 42px;
+  background: rgba(245,197,24,0.07);
+  border: 1px solid rgba(245,197,24,0.3);
+  border-radius: 4px;
+  color: var(--gold);
+  font-size: 0.7rem;
+  padding: 1px 4px;
+  outline: none;
+  font-family: 'Inter', sans-serif;
+  text-align: center;
+  transition: var(--trans);
+}
+.bp-price-input:focus {
+  border-color: var(--gold);
+  background: rgba(245,197,24,0.13);
+  box-shadow: 0 0 0 2px rgba(245,197,24,0.15);
+}
