@@ -3,6 +3,18 @@
    Pure vanilla JS. No frameworks. localStorage persistence.
    ============================================================ */
 
+// ── Auction Rules ─────────────────────────────────────────────
+const RULES = {
+  PURSE:            125,   // Cr
+  MIN_SQUAD:         22,
+  MAX_SQUAD:         25,
+  MIN_OVERSEAS:       7,
+  MAX_OVERSEAS:       8,
+  MAX_LOW_PRICE:      3,   // max players bought at base ₹0.30–0.70 Cr
+  LOW_PRICE_MIN:   0.30,   // Cr  (₹30 Lakhs)
+  LOW_PRICE_MAX:   0.75,   // Cr  (anything below ₹75L = low-price tier, use < not <=)
+};
+
 // ── State ─────────────────────────────────────────────────────
 let owners    = [];   // { name, team, purse, totalPurse, slots, bought: [] }
 let allPlayers = [];  // parsed from uploaded file
@@ -77,22 +89,25 @@ function loadState() {
 function addOwner() {
   const name  = $('inp-name').value.trim();
   const team  = $('inp-team').value.trim();
-  const purse = parseFloat($('inp-purse').value);
-  const slots = parseInt($('inp-slots').value);
 
-  if (!name || !team || isNaN(purse) || purse <= 0 || isNaN(slots) || slots <= 0) {
-    showSetupMsg('Please fill in all fields correctly.', 'error');
+  if (!name || !team) {
+    showSetupMsg('Please enter Owner Name and Team Name.', 'error');
     return;
   }
 
-  owners.push({ name, team, purse, totalPurse: purse, slots, totalSlots: slots, bought: [] });
+  owners.push({
+    name,
+    team,
+    purse:      RULES.PURSE,
+    totalPurse: RULES.PURSE,
+    slots:      RULES.MAX_SQUAD,   // tracks remaining slots (max 25)
+    totalSlots: RULES.MAX_SQUAD,
+    bought:     []
+  });
   saveState();
 
-  // clear form
   $('inp-name').value = '';
   $('inp-team').value = '';
-  $('inp-purse').value = '';
-  $('inp-slots').value = '';
   $('inp-name').focus();
 
   showSetupMsg('', '');
@@ -118,7 +133,7 @@ function renderOwnerCards() {
       <div class="owner-card-team">${o.team}</div>
       <div class="owner-card-meta">
         <div class="owner-meta-chip">💰 <span>₹${o.purse} Cr</span></div>
-        <div class="owner-meta-chip">👤 <span>${o.slots}</span> slots</div>
+        <div class="owner-meta-chip">👤 <span>${RULES.MIN_SQUAD}–${RULES.MAX_SQUAD}</span> players</div>
       </div>
     `;
     grid.appendChild(card);
@@ -281,6 +296,9 @@ function renderPlayerCard(p) {
   card.style.animation = 'none';
   void card.offsetWidth;
   card.style.animation = 'fadeIn 0.35s ease';
+
+  // refresh team buttons now that currentPlayer is set
+  refreshTeamButtons();
 }
 
 function showSetComplete() {
@@ -306,7 +324,7 @@ function buildTeamButtons() {
     btn.id = `team-btn-${i}`;
     btn.innerHTML = `
       ${o.team}
-      <small class="team-purse-left">₹${o.purse.toFixed(1)} Cr · ${o.slots} slots</small>
+      <small class="team-purse-left">₹${o.purse.toFixed(2)} Cr · 0/${RULES.MAX_SQUAD} players</small>
     `;
     btn.onclick = () => sellTo(i);
     wrap.appendChild(btn);
@@ -314,15 +332,33 @@ function buildTeamButtons() {
 }
 
 function refreshTeamButtons() {
+  const isOverseas = currentPlayer && currentPlayer.isOverseas;
+
   owners.forEach((o, i) => {
     const btn = $(`team-btn-${i}`);
     if (!btn) return;
+
+    const overseasCount  = o.bought.filter(b => b.isOverseas).length;
+    const squadFull      = o.bought.length >= RULES.MAX_SQUAD;
+    const noPurse        = o.purse <= 0;
+    const overseasFull   = isOverseas && overseasCount >= RULES.MAX_OVERSEAS;
+
+    const blocked = squadFull || noPurse || overseasFull;
+
+    let hint = '';
+    if (squadFull)         hint = 'Squad full';
+    else if (noPurse)      hint = 'No purse';
+    else if (overseasFull) hint = 'Overseas limit reached';
+
     btn.innerHTML = `
       ${o.team}
-      <small class="team-purse-left">₹${o.purse.toFixed(1)} Cr · ${o.slots} slots</small>
+      <small class="team-purse-left">
+        ₹${o.purse.toFixed(2)} Cr · ${o.bought.length}/${RULES.MAX_SQUAD} players
+        ${hint ? `· ⚠ ${hint}` : ''}
+      </small>
     `;
-    btn.disabled = o.purse <= 0 || o.slots <= 0;
-    if (btn.disabled) btn.style.opacity = '0.4';
+    btn.disabled = blocked;
+    btn.style.opacity = blocked ? '0.35' : '1';
   });
 }
 
@@ -337,20 +373,59 @@ function sellTo(ownerIdx) {
     alert('Enter a valid winning bid amount.'); return;
   }
 
-  const owner = owners[ownerIdx];
-
-  if (bidVal > owner.purse) {
-    alert(`${owner.team} doesn't have enough purse! Available: ₹${owner.purse.toFixed(1)} Cr`);
+  // ── Rule: Bid must be >= base price ──
+  if (bidVal < currentPlayer.price) {
+    alert(`❌ Bid (₹${bidVal} Cr) is below the base price (₹${currentPlayer.price} Cr).\nFinal bid must be equal to or greater than the base price.`);
     return;
   }
-  if (owner.slots <= 0) {
-    alert(`${owner.team} has no player slots remaining.`); return;
+
+  const owner = owners[ownerIdx];
+  const bought = owner.bought;
+
+  // ── Rule: Purse check ──
+  if (bidVal > owner.purse) {
+    alert(`❌ ${owner.team} doesn't have enough purse!\nAvailable: ₹${owner.purse.toFixed(2)} Cr`);
+    return;
   }
 
-  // Record purchase
+  // ── Rule: Max squad size (25) ──
+  if (bought.length >= RULES.MAX_SQUAD) {
+    alert(`❌ ${owner.team} has reached the maximum squad size of ${RULES.MAX_SQUAD} players.`);
+    return;
+  }
+
+  // ── Rule: Max overseas (8) ──
+  const overseasCount = bought.filter(b => b.isOverseas).length;
+  if (currentPlayer.isOverseas && overseasCount >= RULES.MAX_OVERSEAS) {
+    alert(`❌ ${owner.team} already has ${RULES.MAX_OVERSEAS} overseas players (maximum allowed).`);
+    return;
+  }
+
+  // ── Rule: Max 3 low-price players (final bid ₹0.30–0.749 Cr) ──
+  // Classification is based on the FINAL BID, not base price.
+  // If bid >= 0.75 Cr, player does NOT count as low-price — no restriction.
+  const isLowPrice = bidVal >= RULES.LOW_PRICE_MIN && bidVal < RULES.LOW_PRICE_MAX;
+  const lowPriceCount = bought.filter(b => b.isLowPrice).length;
+  if (isLowPrice && lowPriceCount >= RULES.MAX_LOW_PRICE) {
+    alert(`❌ ${owner.team} has already bought ${RULES.MAX_LOW_PRICE} players in the ₹30L–₹70L category (maximum allowed).`);
+    return;
+  }
+
+  // ── Rule: Slots remaining check ──
+  if (owner.slots <= 0) {
+    alert(`❌ ${owner.team} has no player slots remaining.`); return;
+  }
+
+  // All checks passed — record purchase
   owner.purse  = parseFloat((owner.purse - bidVal).toFixed(2));
   owner.slots -= 1;
-  owner.bought.push({ name: currentPlayer.playerName, price: bidVal, isOverseas: currentPlayer.isOverseas });
+  bought.push({
+    name:       currentPlayer.playerName,
+    price:      bidVal,
+    basePrice:  currentPlayer.price,
+    isOverseas: currentPlayer.isOverseas,
+    isLowPrice: isLowPrice
+  });
 
   // Mark player as sold in master list
   const masterIdx = allPlayers.findIndex(p => p.playerName === currentPlayer.playerName && p.setNo === currentPlayer.setNo);
@@ -358,11 +433,11 @@ function sellTo(ownerIdx) {
 
   saveState();
   renderScoreboard();
-  refreshTeamButtons();
   showSoldToast(currentPlayer.playerName, bidVal, owner.team);
 
   currentPlayer = null;
   $('inp-bid').value = '';
+  refreshTeamButtons();
 }
 
 // ── MARK UNSOLD ───────────────────────────────────────────────
@@ -396,8 +471,16 @@ function renderScoreboard() {
 
   owners.forEach((o, i) => {
     const spentPct = Math.round(((o.totalPurse - o.purse) / o.totalPurse) * 100);
-    const boughtCount = o.bought.length;
+    const boughtCount  = o.bought.length;
     const overseasCount = o.bought.filter(b => b.isOverseas).length;
+    const lowPriceCount = o.bought.filter(b => b.isLowPrice).length;
+
+    // warning colours
+    const overseasColor  = overseasCount >= RULES.MAX_OVERSEAS  ? '#e63946'
+                         : overseasCount >= RULES.MIN_OVERSEAS  ? '#00c9a7' : '#ff6b35';
+    const lowPriceColor  = lowPriceCount >= RULES.MAX_LOW_PRICE ? '#e63946' : '#8a93a8';
+    const squadColor     = boughtCount  >= RULES.MAX_SQUAD      ? '#e63946'
+                         : boughtCount  >= RULES.MIN_SQUAD      ? '#00c9a7' : '#8a93a8';
 
     const card = document.createElement('div');
     card.className = 'score-card';
@@ -408,7 +491,7 @@ function renderScoreboard() {
           <div class="score-owner-name">${o.name}</div>
         </div>
         <div class="score-purse">
-          ₹${o.purse.toFixed(1)} Cr
+          ₹${o.purse.toFixed(2)} Cr
           <small>remaining</small>
         </div>
       </div>
@@ -416,19 +499,30 @@ function renderScoreboard() {
         <div class="score-bar" style="width:${spentPct}%"></div>
       </div>
       <div class="score-players-count">
-        <span>${boughtCount} player${boughtCount !== 1 ? 's' : ''} bought</span>
-        <span>${o.slots} slot${o.slots !== 1 ? 's' : ''} left</span>
+        <span style="color:${squadColor}">${boughtCount}/${RULES.MAX_SQUAD} players</span>
+        <span>${RULES.MAX_SQUAD - boughtCount} slots left</span>
       </div>
       <div class="score-overseas-count">
-        🌍 <span>${overseasCount}</span> overseas
+        🌍 <span style="color:${overseasColor}">${overseasCount}/${RULES.MAX_OVERSEAS} overseas</span>
+        &nbsp;|&nbsp;
+        💰 <span style="color:${lowPriceColor}">${lowPriceCount}/${RULES.MAX_LOW_PRICE} low-price</span>
       </div>
       ${boughtCount > 0 ? `
         <button class="btn-toggle-players" onclick="toggleBought(${i})">▾ View Squad</button>
         <div class="score-players-list" id="bought-list-${i}">
-          ${o.bought.map(b => `
+          ${o.bought.map((b, bi) => `
             <div class="bought-player-row">
               <span class="bp-name">${b.isOverseas ? '🌍 ' : ''}${b.name}</span>
-              <span class="bp-price">₹${b.price} Cr</span>
+              <span class="bp-actions">
+                <input
+                  type="number"
+                  class="bp-price-input"
+                  value="${b.price}"
+                  min="0" step="0.25"
+                  onchange="saveInlinePrice(${i},${bi},this.value)"
+                />
+                <button class="bp-btn bp-delete" onclick="deletePlayer(${i},${bi})" title="Remove player">✕</button>
+              </span>
             </div>
           `).join('')}
         </div>
@@ -444,6 +538,59 @@ function toggleBought(idx) {
   el.classList.toggle('open');
   const btn = el.previousElementSibling;
   btn.textContent = el.classList.contains('open') ? '▴ Hide Squad' : '▾ View Squad';
+}
+
+// ── INLINE EDIT PLAYER PRICE ─────────────────────────────────
+function saveInlinePrice(ownerIdx, playerIdx, newVal) {
+  const newPrice = parseFloat(newVal);
+  if (isNaN(newPrice) || newPrice < 0) {
+    alert('Invalid price.'); return;
+  }
+
+  const owner  = owners[ownerIdx];
+  const player = owner.bought[playerIdx];
+  const diff   = newPrice - player.price;
+
+  if (diff > owner.purse) {
+    alert(`❌ Not enough purse! ${owner.team} only has ₹${owner.purse.toFixed(2)} Cr remaining.`);
+    return;
+  }
+
+  owner.purse  = parseFloat((owner.purse - diff).toFixed(2));
+  player.price = newPrice;
+  player.isLowPrice = newPrice >= RULES.LOW_PRICE_MIN && newPrice < RULES.LOW_PRICE_MAX;
+
+  saveState();
+  renderScoreboard();
+  refreshTeamButtons();
+
+  const listEl = $(`bought-list-${ownerIdx}`);
+  if (listEl) listEl.classList.add('open');
+}
+
+// ── DELETE PLAYER FROM SQUAD ──────────────────────────────────
+function deletePlayer(ownerIdx, playerIdx) {
+  const owner  = owners[ownerIdx];
+  const player = owner.bought[playerIdx];
+
+  if (!confirm(`Remove "${player.name}" from ${owner.team}'s squad?\n\n₹${player.price} Cr will be refunded to the purse.`)) return;
+
+  // Refund purse and restore slot
+  owner.purse  = parseFloat((owner.purse + player.price).toFixed(2));
+  owner.slots += 1;
+  owner.bought.splice(playerIdx, 1);
+
+  // Mark player as unsold again in master list so they can be re-auctioned
+  const masterIdx = allPlayers.findIndex(p => p.playerName === player.name);
+  if (masterIdx !== -1) allPlayers[masterIdx].sold = false;
+
+  saveState();
+  renderScoreboard();
+  refreshTeamButtons();
+
+  // Re-open the squad list
+  const listEl = $(`bought-list-${ownerIdx}`);
+  if (listEl) listEl.classList.add('open');
 }
 
 // ── SOLD TOAST ────────────────────────────────────────────────
@@ -464,7 +611,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderOwnerCards();
 
   // Allow Enter key in setup form
-  ['inp-name','inp-team','inp-purse','inp-slots'].forEach(id => {
+  ['inp-name','inp-team'].forEach(id => {
     $(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') addOwner(); });
   });
 });
@@ -552,7 +699,7 @@ function endAuction() {
   doc.text(`Total Players Sold: ${totalSold}`, PAGE_W / 2, y, { align: 'center' });
 
   y += 8;
-  doc.text(`Total Amount Spent: Rs. ${totalSpent.toFixed(1)} Cr`, PAGE_W / 2, y, { align: 'center' });
+  doc.text(`Total Amount Spent: Rs. ${totalSpent.toFixed(2)} Cr`, PAGE_W / 2, y, { align: 'center' });
 
   y += 8;
   const now = new Date();
@@ -603,8 +750,8 @@ function endAuction() {
     const overseasCt = owner.bought.filter(b => b.isOverseas).length;
 
     const chips = [
-      { label: 'PURSE USED',   val: `Rs. ${spent.toFixed(1)} Cr`,      col: GOLD },
-      { label: 'REMAINING',    val: `Rs. ${owner.purse.toFixed(1)} Cr`, col: TEAL },
+      { label: 'PURSE USED',   val: `Rs. ${spent.toFixed(2)} Cr`,      col: GOLD },
+      { label: 'REMAINING',    val: `Rs. ${owner.purse.toFixed(2)} Cr`, col: TEAL },
       { label: 'PLAYERS',      val: `${owner.bought.length}`,      col: WHITE },
       { label: 'OVERSEAS',     val: `${overseasCt}`,               col: ORANGE },
     ];
@@ -695,7 +842,7 @@ function endAuction() {
     doc.setFontSize(8.5);
     doc.setTextColor(...GOLD);
     doc.text('TOTAL SPENT', MARGIN + 4, y + 4);
-    doc.text(`Rs. ${spent.toFixed(1)} Cr`, MARGIN + COL_W - 18, y + 4, { align: 'right' });
+    doc.text(`Rs. ${spent.toFixed(2)} Cr`, MARGIN + COL_W - 18, y + 4, { align: 'right' });
 
     // bottom bar
     doc.setFillColor(...GOLD);
