@@ -20,7 +20,7 @@
       <div class="logo-wrap">
         <span class="logo-icon">🏏</span>
         <div>
-          <h1 class="logo-title">E-IPL AUCTION</h1>
+          <h1 class="logo-title">IPL AUCTION</h1>
           <p class="logo-sub">Friends Edition</p>
         </div>
       </div>
@@ -35,7 +35,7 @@
 
       <!-- Add form -->
       <div class="card form-card">
-        <div class="form-grid">
+        <div class="form-grid form-grid-2">
           <div class="form-group">
             <label for="inp-name">Owner Name</label>
             <input type="text" id="inp-name" placeholder="e.g. Rahul" autocomplete="off"/>
@@ -44,16 +44,23 @@
             <label for="inp-team">Team Name</label>
             <input type="text" id="inp-team" placeholder="e.g. Mumbai Titans" autocomplete="off"/>
           </div>
-          <div class="form-group">
-            <label for="inp-purse">Total Purse (₹ Cr)</label>
-            <input type="number" id="inp-purse" placeholder="e.g. 100" min="1"/>
-          </div>
-          <div class="form-group">
-            <label for="inp-slots">Players to Buy</label>
-            <input type="number" id="inp-slots" placeholder="e.g. 11" min="1"/>
-          </div>
+        </div>
+        <div class="fixed-rules-note">
+          Each team gets &nbsp;<strong>₹125 Cr</strong>&nbsp; purse &nbsp;·&nbsp; Squad size: <strong>22–25 players</strong>
         </div>
         <button class="btn-primary" onclick="addOwner()">＋ &nbsp;Add Team</button>
+      </div>
+
+      <!-- Rules panel -->
+      <div class="rules-panel">
+        <h4 class="rules-title">📋 AUCTION RULES</h4>
+        <ul class="rules-list">
+          <li>💰 Purse: <strong>₹125 Crore</strong> per team</li>
+          <li>👥 Squad: Minimum <strong>22</strong> · Maximum <strong>25</strong> players</li>
+          <li>🌍 Overseas: Minimum <strong>7</strong> · Maximum <strong>8</strong> players</li>
+          <li>💸 Max <strong>3 players</strong> with base price ₹30L – ₹70L per team</li>
+          <li>✅ Uncapped players can be bought without limit (within squad size)</li>
+        </ul>
       </div>
 
       <!-- Teams list -->
